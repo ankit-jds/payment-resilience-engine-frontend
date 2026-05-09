@@ -6,18 +6,31 @@ import { getScenario } from '@/features/scenarios/scenarioRegistry'
 import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Maximize2, Minimize2, GripHorizontal } from 'lucide-react'
+import { computeEdgePath, DOMRectBounds } from '@/utils/graphUtils'
 
 export function RequestFlowView() {
   const { events } = useEventStore()
   const { activeScenarioId } = useSimulationStore()
-  const { serviceStates, simulationStatus } = useRuntimeStore()
+  const { serviceStates, simulationStatus, activeTransitions } = useRuntimeStore()
   const { viewports, setViewport } = useUIStore()
 
   const [isOverlayMinimized, setIsOverlayMinimized] = useState(() => {
     return localStorage.getItem('rf_overlay_minimized') === 'true'
   })
+
+  const [nodeBounds, setNodeBounds] = useState<Record<string, DOMRectBounds>>({})
+
+  const handleNodeBounds = useCallback((id: string, bounds: DOMRectBounds) => {
+    setNodeBounds(prev => {
+      const p = prev[id]
+      if (p && p.x === bounds.x && p.y === bounds.y && p.width === bounds.width && p.height === bounds.height) {
+        return prev
+      }
+      return { ...prev, [id]: bounds }
+    })
+  }, [])
 
   useEffect(() => {
     localStorage.setItem('rf_overlay_minimized', isOverlayMinimized.toString())
@@ -50,7 +63,7 @@ export function RequestFlowView() {
         >
           <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex items-center justify-center">
             {/* Graph Container */}
-            <div className="relative w-[1000px] h-[600px]">
+            <div className="relative w-[1200px] h-[800px]">
 
               {/* Service Nodes */}
               {scenario.requestNodes.map(node => {
@@ -58,6 +71,7 @@ export function RequestFlowView() {
                 return (
                   <ServiceNode
                     key={node.id}
+                    id={node.id}
                     label={node.label}
                     metric={state === 'active' || state === 'degraded' ? '12.4k' : '0'}
                     subMetric={state === 'active' ? 'req/s' : ''}
@@ -69,30 +83,48 @@ export function RequestFlowView() {
                     state={state}
                     isPrimary={node.isPrimary}
                     isBlue={node.isBlue}
+                    onBounds={handleNodeBounds}
                   />
                 )
               })}
 
               {/* Lines */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none z-[-1]">
+                <defs>
+                  <marker id="rf-arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#797676" />
+                  </marker>
+                  <marker id="rf-arrow-active" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#3B82F6" />
+                  </marker>
+                </defs>
                 {scenario.requestEdges.map(edge => {
-                  const sourceState = serviceStates[edge.source] || 'idle'
-                  const targetState = serviceStates[edge.target] || 'idle'
-                  // Simple heuristic for active edge
-                  const edgeActive = (targetState !== 'idle' && targetState !== 'completed') || (sourceState === 'active' && targetState === 'completed')
+                  const sourceBounds = nodeBounds[edge.source] || null;
+                  const targetBounds = nodeBounds[edge.target] || null;
+                  const sourceNodeDef = scenario.requestNodes.find(n => n.id === edge.source);
+                  const targetNodeDef = scenario.requestNodes.find(n => n.id === edge.target);
+                  const defaultSource = { x: edge.x1 || sourceNodeDef?.x || 0, y: edge.y1 || sourceNodeDef?.y || 0 };
+                  const defaultTarget = { x: edge.x2 || targetNodeDef?.x || 0, y: edge.y2 || targetNodeDef?.y || 0 };
+                  
+                  const computed = computeEdgePath(edge.id, sourceBounds, targetBounds, defaultSource, defaultTarget);
+                  const edgeTransitions = activeTransitions.filter(t => t.edgeId === edge.id);
 
                   return (
                     <g key={edge.id}>
-                      <line x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="#797676" strokeWidth="1" />
-                      {edgeActive && simulationStatus === 'Running' && (
-                        <motion.circle
-                          r="3"
-                          fill="#3B82F6"
-                          initial={{ x: edge.x1, y: edge.y1 }}
-                          animate={{ x: edge.x2, y: edge.y2 }}
-                          transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                      <path d={computed.path} stroke="#797676" strokeWidth="1" fill="none" markerEnd="url(#rf-arrow)" />
+                      {edgeTransitions.map(transition => (
+                        <motion.path 
+                          key={`${edge.id}-${transition.requestId}`} 
+                          initial={{ pathLength: 0 }} 
+                          animate={{ pathLength: 1 }} 
+                          transition={{ duration: 0.5 }} 
+                          d={computed.path} 
+                          stroke="#3B82F6"
+                          strokeWidth="2"
+                          fill="none"
+                          markerEnd="url(#rf-arrow-active)" 
                         />
-                      )}
+                      ))}
                     </g>
                   )
                 })}
@@ -156,9 +188,32 @@ export function RequestFlowView() {
   )
 }
 
-function ServiceNode({ label, metric, subMetric, subMetricLabel, x, y, active, state, latency, isPrimary, isBlue }: any) {
+function ServiceNode({ id, label, metric, subMetric, subMetricLabel, x, y, active, state, latency, isPrimary, isBlue, onBounds }: any) {
   let borderColor = "border-surface/80"
   let opacity = "opacity-100"
+
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!ref.current) return;
+    
+    const updateBounds = () => {
+      if (ref.current) {
+        onBounds(id, {
+          x,
+          y,
+          width: ref.current.offsetWidth,
+          height: ref.current.offsetHeight
+        })
+      }
+    }
+
+    updateBounds()
+    
+    const observer = new ResizeObserver(() => updateBounds())
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [id, x, y, onBounds, label, metric, subMetric, subMetricLabel])
 
   if (!active && state !== 'failed' && state !== 'completed') {
     opacity = "opacity-50"
@@ -174,6 +229,7 @@ function ServiceNode({ label, metric, subMetric, subMetricLabel, x, y, active, s
 
   return (
     <div
+      ref={ref}
       className={clsx(
         "absolute w-[180px] border bg-surface/10 backdrop-blur p-4 rounded transition-all duration-300",
         borderColor,

@@ -6,19 +6,33 @@ import { getScenario } from '@/features/scenarios/scenarioRegistry'
 import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Maximize2, Minimize2, GripHorizontal } from 'lucide-react'
 import { NodeStatus } from '@/features/scenarios/types'
+import { computeEdgePath, DOMRectBounds } from '@/utils/graphUtils'
 
 export function StateMachineView() {
   const { events } = useEventStore()
   const { activeScenarioId } = useSimulationStore()
-  const { nodeStates, simulationSessionId, nodeExecutionCounts, activeRequests, edgeActivations } = useRuntimeStore()
+  const { nodeStates, simulationSessionId, nodeExecutionCounts, activeRequests, activeTransitions } = useRuntimeStore()
   const { viewports, setViewport } = useUIStore()
   
   const [isOverlayMinimized, setIsOverlayMinimized] = useState(() => {
     return localStorage.getItem('sm_overlay_minimized') === 'true'
   })
+
+  const [nodeBounds, setNodeBounds] = useState<Record<string, DOMRectBounds>>({})
+
+  const handleNodeBounds = useCallback((id: string, bounds: DOMRectBounds) => {
+    setNodeBounds(prev => {
+      // Avoid unnecessary re-renders
+      const p = prev[id]
+      if (p && p.x === bounds.x && p.y === bounds.y && p.width === bounds.width && p.height === bounds.height) {
+        return prev
+      }
+      return { ...prev, [id]: bounds }
+    })
+  }, [])
 
   useEffect(() => {
     localStorage.setItem('sm_overlay_minimized', isOverlayMinimized.toString())
@@ -56,7 +70,7 @@ export function StateMachineView() {
         >
           <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex items-center justify-center">
             {/* Graph Container */}
-            <div className="relative w-[800px] h-[500px]">
+            <div className="relative w-[1200px] h-[800px]">
               {/* Edges using SVG */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 <defs>
@@ -75,9 +89,6 @@ export function StateMachineView() {
                 </defs>
                 
                 {scenario.stateEdges.map(edge => {
-                  const targetState = nodeStates[edge.target] || 'inactive'
-                  
-                  const isEdgeActive = targetState !== 'inactive' && targetState !== 'skipped'
                   const targetNodeDef = scenario.stateNodes.find(n => n.id === edge.target)
                   
                   let strokeColor = '#3B82F6'
@@ -96,25 +107,31 @@ export function StateMachineView() {
                     strokeDasharray: edge.type === 'dashed' ? '4 4' : 'none'
                   }
 
-                  const edgeKey = edgeActivations[edge.id] ? `${edge.id}-${edgeActivations[edge.id]}` : edge.id;
+                  const sourceBounds = nodeBounds[edge.source] || null;
+                  const targetBounds = nodeBounds[edge.target] || null;
+                  const sourceNodeDef = scenario.stateNodes.find(n => n.id === edge.source);
+                  const defaultSource = { x: sourceNodeDef?.x || 0, y: sourceNodeDef?.y || 0 };
+                  const defaultTarget = { x: targetNodeDef?.x || 0, y: targetNodeDef?.y || 0 };
+                  
+                  const computed = computeEdgePath(edge.id, sourceBounds, targetBounds, defaultSource, defaultTarget);
+
+                  const edgeTransitions = activeTransitions.filter(t => t.edgeId === edge.id);
 
                   return (
                     <g key={edge.id}>
-                      {edge.path ? (
-                        <>
-                          <path d={edge.path} stroke="#797676" {...commonProps} markerEnd="url(#arrow)" />
-                          {isEdgeActive && (
-                            <motion.path key={edgeKey} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.5 }} d={edge.path} stroke={strokeColor} {...commonProps} markerEnd={marker} />
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <line x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="#797676" {...commonProps} markerEnd="url(#arrow)" />
-                          {isEdgeActive && (
-                            <motion.line key={edgeKey} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.5 }} x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke={strokeColor} {...commonProps} markerEnd={marker} />
-                          )}
-                        </>
-                      )}
+                      <path d={computed.path} stroke="#797676" {...commonProps} markerEnd="url(#arrow)" />
+                      {edgeTransitions.map(transition => (
+                        <motion.path 
+                          key={`${edge.id}-${transition.requestId}`} 
+                          initial={{ pathLength: 0 }} 
+                          animate={{ pathLength: 1 }} 
+                          transition={{ duration: 0.5 }} 
+                          d={computed.path} 
+                          stroke={strokeColor} 
+                          {...commonProps} 
+                          markerEnd={marker} 
+                        />
+                      ))}
                     </g>
                   )
                 })}
@@ -128,6 +145,7 @@ export function StateMachineView() {
                   status={nodeStates[node.id] || 'inactive'} 
                   executionCount={nodeExecutionCounts[node.id] || 0}
                   activeReqs={activeRequests[node.id] || []}
+                  onBounds={handleNodeBounds}
                 />
               ))}
             </div>
@@ -186,11 +204,40 @@ export function StateMachineView() {
   )
 }
 
-function StateNode({ label, sub, x, y, status, isWarning, isDanger, executionCount, activeReqs }: { label: string, sub: string, x: number, y: number, status: NodeStatus, isWarning?: boolean, isDanger?: boolean, executionCount?: number, activeReqs?: string[] }) {
+function StateNode({ id, label, sub, x, y, status, isWarning, isDanger, executionCount, activeReqs, onBounds }: { id: string, label: string, sub: string, x: number, y: number, status: NodeStatus, isWarning?: boolean, isDanger?: boolean, executionCount?: number, activeReqs?: string[], onBounds: (id: string, bounds: DOMRectBounds) => void }) {
   const isInactive = status === 'inactive'
   const isSkipped = status === 'skipped'
   const isActive = status === 'active' || status === 'completed' || status === 'failed' || status === 'recovery'
   
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!ref.current) return;
+    
+    const updateBounds = () => {
+      // We calculate local transform coordinates relative to the graph container if possible,
+      // but since x and y are absolute positioning values on the container, we can just use them and the width/height
+      // However, getBoundingClientRect() gives screen coords.
+      // Since it's absolutely positioned within a container, we can just use the provided x, y and measure width/height.
+      if (ref.current) {
+        onBounds(id, {
+          x,
+          y,
+          width: ref.current.offsetWidth,
+          height: ref.current.offsetHeight
+        })
+      }
+    }
+
+    // Initial
+    updateBounds()
+    
+    // Setup observer for text changes etc
+    const observer = new ResizeObserver(() => updateBounds())
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [id, x, y, onBounds, label, sub, activeReqs])
+
   let borderColor = 'border-surface/80'
   let opacity = 'opacity-100'
 
@@ -207,6 +254,7 @@ function StateNode({ label, sub, x, y, status, isWarning, isDanger, executionCou
 
   return (
     <div 
+      ref={ref}
       className={clsx(
         "absolute w-[140px] p-3 rounded flex flex-col items-center justify-center text-center transition-all duration-300 backdrop-blur",
         isActive ? "bg-surface/30" : "bg-surface/10",
