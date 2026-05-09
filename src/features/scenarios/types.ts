@@ -58,9 +58,10 @@ export interface SimulationStep {
 export interface ScenarioDefinition {
   id: string
   name: string
+  description?: string
   stateNodes: StateNodeConfig[]
   stateEdges: StateEdgeConfig[]
   requestNodes: RequestNodeConfig[]
   requestEdges: RequestEdgeConfig[]
-  steps: SimulationStep[]
+  events: any[]
 }
