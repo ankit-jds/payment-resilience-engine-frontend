@@ -1,12 +1,11 @@
 import { useRuntimeStore } from './runtimeStore'
-import { getScenario } from '../scenarios/scenarioRegistry'
 import { useEventStore } from '@/stores/eventStore'
 import { NodeStatus } from '../scenarios/types'
 
 const generateId = () => Math.random().toString(36).substring(2, 9)
 
 export const SimulationRuntimeEngine = {
-  start(scenarioId: string) {
+  start(_scenarioId: string) {
     this.cleanup()
     
     const sessionId = generateId()
@@ -52,7 +51,7 @@ export const SimulationRuntimeEngine = {
       
       // Activate edges for animation
       if (edgeId && status === 'active') {
-        runtimeState.activateEdge(edgeId)
+        runtimeState.activateEdge(edgeId, metadata?.requestId || 'unknown')
       }
       
       // Optionally handle serviceUpdates if we want services to be driven by events too
@@ -76,7 +75,7 @@ export const SimulationRuntimeEngine = {
     }
   },
 
-  isValidTransition(current: NodeStatus, next: NodeStatus): boolean {
+  isValidTransition(_current: NodeStatus, _next: NodeStatus): boolean {
     // In an event-sourced simulation, trust the incoming events
     // Allow nodes to be re-entered (e.g. completed -> active) for multi-traversal
     return true

@@ -13,7 +13,7 @@ interface RuntimeState {
   activeExecutionContext: string | null
   nodeExecutionCounts: Record<string, number>
   activeRequests: Record<string, string[]>
-  edgeActivations: Record<string, number>
+  activeTransitions: { edgeId: string, requestId: string }[]
   
   // Actions
   setSessionId: (id: string | null) => void
@@ -28,7 +28,7 @@ interface RuntimeState {
   incrementNodeExecution: (nodeId: string) => void
   addActiveRequest: (nodeId: string, requestId: string) => void
   removeActiveRequest: (nodeId: string, requestId: string) => void
-  activateEdge: (edgeId: string) => void
+  activateEdge: (edgeId: string, requestId: string) => void
   
   clearState: () => void
 }
@@ -43,7 +43,7 @@ export const useRuntimeStore = create<RuntimeState>((set) => ({
   activeExecutionContext: null,
   nodeExecutionCounts: {},
   activeRequests: {},
-  edgeActivations: {},
+  activeTransitions: [],
 
   setSessionId: (id) => set({ simulationSessionId: id }),
   setSimulationStatus: (status) => set({ simulationStatus: status }),
@@ -85,8 +85,8 @@ export const useRuntimeStore = create<RuntimeState>((set) => ({
     }
   }),
 
-  activateEdge: (edgeId) => set((state) => ({
-    edgeActivations: { ...state.edgeActivations, [edgeId]: Date.now() }
+  activateEdge: (edgeId, requestId) => set((state) => ({
+    activeTransitions: [...state.activeTransitions, { edgeId, requestId }]
   })),
 
   clearState: () => set({
@@ -99,6 +99,6 @@ export const useRuntimeStore = create<RuntimeState>((set) => ({
     activeExecutionContext: null,
     nodeExecutionCounts: {},
     activeRequests: {},
-    edgeActivations: {},
+    activeTransitions: [],
   })
 }))
