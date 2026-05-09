@@ -17,8 +17,16 @@ interface EventState {
   clearEvents: () => void
 }
 
+const MAX_EVENTS = 150
+
 export const useEventStore = create<EventState>((set) => ({
   events: [],
-  addEvent: (event) => set((state) => ({ events: [...state.events, event] })),
+  addEvent: (event) => set((state) => {
+    const nextEvents = [...state.events, event]
+    if (nextEvents.length > MAX_EVENTS) {
+      return { events: nextEvents.slice(nextEvents.length - MAX_EVENTS) }
+    }
+    return { events: nextEvents }
+  }),
   clearEvents: () => set({ events: [] }),
 }))

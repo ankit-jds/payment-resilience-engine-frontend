@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSimulationStore } from '@/stores/simulationStore'
-import { ChevronDown, ChevronRight, RefreshCw, FileText, BarChart2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, RefreshCw, Play } from 'lucide-react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -43,7 +43,8 @@ const groups: ScenarioGroup[] = [
 ]
 
 export function ScenarioSidebar() {
-  const { activeScenarioId, setActiveScenario, resetSimulation } = useSimulationStore()
+  const { activeScenarioId, setActiveScenario, resetSimulation, simulationStatus } = useSimulationStore()
+  const isRunning = simulationStatus === 'Running'
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     payment_consistency: true,
     webhook_resilience: true,
@@ -86,12 +87,14 @@ export function ScenarioSidebar() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActiveScenario(item.id)}
+                      onClick={() => !isRunning && setActiveScenario(item.id)}
+                      disabled={isRunning}
                       className={cn(
                         "w-full text-left pl-10 pr-4 py-1.5 text-[13px] font-mono transition-colors",
                         isActive 
                           ? "bg-secondary/20 text-secondary border-l-2 border-secondary" 
-                          : "text-neutral hover:text-neutral-300 hover:bg-surface/30 border-l-2 border-transparent"
+                          : "text-neutral hover:text-neutral-300 hover:bg-surface/30 border-l-2 border-transparent",
+                        isRunning && !isActive && "opacity-50 cursor-not-allowed"
                       )}
                     >
                       {item.label}
@@ -106,21 +109,28 @@ export function ScenarioSidebar() {
 
       <div className="p-4 border-t border-surface/30 flex flex-col gap-2">
         <button 
+          onClick={() => {
+            import('@/features/simulation-engine/engine').then(m => m.SimulationRuntimeEngine.start(activeScenarioId))
+          }}
+          disabled={isRunning}
+          className={cn(
+            "w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-mono border rounded transition-colors",
+            isRunning 
+              ? "border-surface text-neutral/50 bg-surface/20 cursor-not-allowed" 
+              : "border-secondary text-secondary hover:bg-secondary/10"
+          )}
+        >
+          <Play className="w-3.5 h-3.5" />
+          {isRunning ? 'Simulation Running...' : 'Start Simulation'}
+        </button>
+
+        <button 
           onClick={resetSimulation}
           className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-mono border border-surface text-neutral hover:text-white hover:bg-surface/50 rounded transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           Reset Simulation
         </button>
-
-        <div className="mt-2 space-y-1">
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-neutral hover:text-white hover:bg-surface/30 rounded transition-colors">
-            <FileText className="w-4 h-4" /> Logs
-          </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-neutral hover:text-white hover:bg-surface/30 rounded transition-colors">
-            <BarChart2 className="w-4 h-4" /> Metrics
-          </button>
-        </div>
       </div>
     </aside>
   )
