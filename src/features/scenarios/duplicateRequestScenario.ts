@@ -4,19 +4,18 @@ export const duplicateRequestScenario: ScenarioDefinition = {
   id: 'duplicate_request',
   name: 'Duplicate Request Prevention',
   stateNodes: [
-    { id: 'created', label: 'CREATED', sub: 't=0ms', x: 20, y: 210 },
-    { id: 'processing', label: 'PROCESSING', sub: 'Retries: 2', x: 250, y: 210 },
-    { id: 'success', label: 'SUCCESS', sub: 'idempotency_key', x: 520, y: 140 },
-    { id: 'duplicate_success', label: 'DUPLICATE_SUCCESS', sub: 'Conflict Detected', x: 520, y: 280, isWarning: true },
-    { id: 'refund_queued', label: 'REFUND_QUEUED', sub: 'Compensating Tx', x: 520, y: 370, isDanger: true },
-    { id: 'refunded', label: 'REFUNDED', sub: 'State Settled', x: 290, y: 370 },
+    { id: 'request_received', label: 'REQUEST RECEIVED', sub: 'API Gateway', x: 350, y: 50 },
+    { id: 'idempotency_check', label: 'IDEMPOTENCY CHECK', sub: 'Redis Lock', x: 350, y: 170 },
+    { id: 'order_created', label: 'ORDER CREATED', sub: 'Database Insert', x: 150, y: 300, isWarning: false },
+    { id: 'existing_order_found', label: 'EXISTING ORDER', sub: 'Cache Hit', x: 550, y: 300, isWarning: true },
+    { id: 'response_returned', label: 'RESPONSE RETURNED', sub: 'Client API', x: 350, y: 430 },
   ],
   stateEdges: [
-    { id: 'e_create_proc', source: 'created', target: 'processing', type: 'solid', x1: 160, y1: 250, x2: 250, y2: 250 },
-    { id: 'e_proc_succ', source: 'processing', target: 'success', type: 'solid', path: 'M 390 230 L 520 180' },
-    { id: 'e_proc_dup', source: 'processing', target: 'duplicate_success', type: 'dashed', path: 'M 390 270 Q 450 350 520 320' },
-    { id: 'e_dup_req', source: 'duplicate_success', target: 'refund_queued', type: 'dashed', path: 'M 660 320 Q 720 370 660 410' },
-    { id: 'e_req_ref', source: 'refund_queued', target: 'refunded', type: 'solid', x1: 520, y1: 410, x2: 430, y2: 410 },
+    { id: 'e_req_idem', source: 'request_received', target: 'idempotency_check', type: 'solid', x1: 420, y1: 90, x2: 420, y2: 170 },
+    { id: 'e_idem_create', source: 'idempotency_check', target: 'order_created', type: 'solid', path: 'M 350 210 L 220 300' },
+    { id: 'e_idem_exist', source: 'idempotency_check', target: 'existing_order_found', type: 'dashed', path: 'M 490 210 L 620 300' },
+    { id: 'e_create_res', source: 'order_created', target: 'response_returned', type: 'solid', path: 'M 220 340 L 350 430' },
+    { id: 'e_exist_res', source: 'existing_order_found', target: 'response_returned', type: 'dashed', path: 'M 620 340 L 490 430' },
   ],
   requestNodes: [
     { id: 'frontend', label: 'Frontend', x: 50, y: 200 },
@@ -31,41 +30,5 @@ export const duplicateRequestScenario: ScenarioDefinition = {
     { id: 're_3', source: 'backend_api', target: 'webhook_proc', x1: 520, y1: 240, x2: 650, y2: 240 },
     { id: 're_4', source: 'backend_api', target: 'recon_worker', x1: 520, y1: 240, x2: 650, y2: 390 },
   ],
-  steps: [
-    {
-      delayMs: 400,
-      timelineEvent: { severity: 'INFO', traceId: 'trc_1101', message: 'Initial payment request received', latency: 45 },
-      stateUpdates: { created: 'completed', processing: 'active' },
-      serviceUpdates: { frontend: 'active', backend_api: 'active' },
-    },
-    {
-      delayMs: 600,
-      timelineEvent: { severity: 'INFO', traceId: 'trc_1101', message: 'Gateway call initiated', latency: 120 },
-      serviceUpdates: { gateway_sim: 'active' },
-    },
-    {
-      delayMs: 500,
-      timelineEvent: { severity: 'SUCCESS', traceId: 'trc_1101', message: 'Payment authorized successfully', latency: 310 },
-      stateUpdates: { success: 'completed' },
-      serviceUpdates: { gateway_sim: 'completed' },
-    },
-    {
-      delayMs: 800,
-      timelineEvent: { severity: 'WARN', traceId: 'trc_1102', message: 'Duplicate network retry detected', latency: 10 },
-      stateUpdates: { duplicate_success: 'active', success: 'skipped' },
-      serviceUpdates: { frontend: 'active', backend_api: 'degraded' },
-    },
-    {
-      delayMs: 500,
-      timelineEvent: { severity: 'ERROR', traceId: 'trc_1102', message: 'Idempotency conflict, marking for refund', latency: 40 },
-      stateUpdates: { duplicate_success: 'completed', refund_queued: 'active' },
-      serviceUpdates: { backend_api: 'active', recon_worker: 'active' },
-    },
-    {
-      delayMs: 700,
-      timelineEvent: { severity: 'RECOVERY', traceId: 'trc_1102', message: 'Refund processed for duplicate', latency: 850 },
-      stateUpdates: { refund_queued: 'completed', refunded: 'completed' },
-      serviceUpdates: { recon_worker: 'completed', backend_api: 'completed', frontend: 'completed' },
-    }
-  ]
+  steps: [] // Driven by mockSSEService events now
 }

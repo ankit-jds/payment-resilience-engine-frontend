@@ -9,6 +9,12 @@ interface RuntimeState {
   serviceStates: Record<string, ServiceState>
   metadata: Record<string, any>
   
+  // Execution context for multi-traversal
+  activeExecutionContext: string | null
+  nodeExecutionCounts: Record<string, number>
+  activeRequests: Record<string, string[]>
+  edgeActivations: Record<string, number>
+  
   // Actions
   setSessionId: (id: string | null) => void
   setSimulationStatus: (status: 'Idle' | 'Running' | 'Paused') => void
@@ -16,6 +22,14 @@ interface RuntimeState {
   updateNodeState: (nodeId: string, status: NodeStatus) => void
   updateServiceState: (serviceId: string, status: ServiceState) => void
   updateMetadata: (data: Record<string, any>) => void
+  
+  // Context actions
+  setActiveExecutionContext: (requestId: string | null) => void
+  incrementNodeExecution: (nodeId: string) => void
+  addActiveRequest: (nodeId: string, requestId: string) => void
+  removeActiveRequest: (nodeId: string, requestId: string) => void
+  activateEdge: (edgeId: string) => void
+  
   clearState: () => void
 }
 
@@ -26,6 +40,10 @@ export const useRuntimeStore = create<RuntimeState>((set) => ({
   nodeStates: {},
   serviceStates: {},
   metadata: {},
+  activeExecutionContext: null,
+  nodeExecutionCounts: {},
+  activeRequests: {},
+  edgeActivations: {},
 
   setSessionId: (id) => set({ simulationSessionId: id }),
   setSimulationStatus: (status) => set({ simulationStatus: status }),
@@ -43,12 +61,44 @@ export const useRuntimeStore = create<RuntimeState>((set) => ({
     metadata: { ...state.metadata, ...data }
   })),
 
+  setActiveExecutionContext: (requestId) => set({ activeExecutionContext: requestId }),
+  
+  incrementNodeExecution: (nodeId) => set((state) => ({
+    nodeExecutionCounts: { 
+      ...state.nodeExecutionCounts, 
+      [nodeId]: (state.nodeExecutionCounts[nodeId] || 0) + 1 
+    }
+  })),
+
+  addActiveRequest: (nodeId, requestId) => set((state) => {
+    const active = state.activeRequests[nodeId] || []
+    if (active.includes(requestId)) return state
+    return {
+      activeRequests: { ...state.activeRequests, [nodeId]: [...active, requestId] }
+    }
+  }),
+
+  removeActiveRequest: (nodeId, requestId) => set((state) => {
+    const active = state.activeRequests[nodeId] || []
+    return {
+      activeRequests: { ...state.activeRequests, [nodeId]: active.filter(id => id !== requestId) }
+    }
+  }),
+
+  activateEdge: (edgeId) => set((state) => ({
+    edgeActivations: { ...state.edgeActivations, [edgeId]: Date.now() }
+  })),
+
   clearState: () => set({
     nodeStates: {},
     serviceStates: {},
     metadata: {},
     simulationSessionId: null,
     simulationStatus: 'Idle',
-    connectionState: 'DISCONNECTED'
+    connectionState: 'DISCONNECTED',
+    activeExecutionContext: null,
+    nodeExecutionCounts: {},
+    activeRequests: {},
+    edgeActivations: {},
   })
 }))

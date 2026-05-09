@@ -13,7 +13,7 @@ import { NodeStatus } from '@/features/scenarios/types'
 export function StateMachineView() {
   const { events } = useEventStore()
   const { activeScenarioId } = useSimulationStore()
-  const { nodeStates, simulationSessionId } = useRuntimeStore()
+  const { nodeStates, simulationSessionId, nodeExecutionCounts, activeRequests, edgeActivations } = useRuntimeStore()
   const { viewports, setViewport } = useUIStore()
   
   const [isOverlayMinimized, setIsOverlayMinimized] = useState(() => {
@@ -96,20 +96,22 @@ export function StateMachineView() {
                     strokeDasharray: edge.type === 'dashed' ? '4 4' : 'none'
                   }
 
+                  const edgeKey = edgeActivations[edge.id] ? `${edge.id}-${edgeActivations[edge.id]}` : edge.id;
+
                   return (
                     <g key={edge.id}>
                       {edge.path ? (
                         <>
                           <path d={edge.path} stroke="#797676" {...commonProps} markerEnd="url(#arrow)" />
                           {isEdgeActive && (
-                            <motion.path d={edge.path} stroke={strokeColor} {...commonProps} markerEnd={marker} />
+                            <motion.path key={edgeKey} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.5 }} d={edge.path} stroke={strokeColor} {...commonProps} markerEnd={marker} />
                           )}
                         </>
                       ) : (
                         <>
                           <line x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke="#797676" {...commonProps} markerEnd="url(#arrow)" />
                           {isEdgeActive && (
-                            <motion.line initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke={strokeColor} {...commonProps} markerEnd={marker} />
+                            <motion.line key={edgeKey} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.5 }} x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke={strokeColor} {...commonProps} markerEnd={marker} />
                           )}
                         </>
                       )}
@@ -124,6 +126,8 @@ export function StateMachineView() {
                   key={node.id} 
                   {...node} 
                   status={nodeStates[node.id] || 'inactive'} 
+                  executionCount={nodeExecutionCounts[node.id] || 0}
+                  activeReqs={activeRequests[node.id] || []}
                 />
               ))}
             </div>
@@ -182,7 +186,7 @@ export function StateMachineView() {
   )
 }
 
-function StateNode({ label, sub, x, y, status, isWarning, isDanger }: { label: string, sub: string, x: number, y: number, status: NodeStatus, isWarning?: boolean, isDanger?: boolean }) {
+function StateNode({ label, sub, x, y, status, isWarning, isDanger, executionCount, activeReqs }: { label: string, sub: string, x: number, y: number, status: NodeStatus, isWarning?: boolean, isDanger?: boolean, executionCount?: number, activeReqs?: string[] }) {
   const isInactive = status === 'inactive'
   const isSkipped = status === 'skipped'
   const isActive = status === 'active' || status === 'completed' || status === 'failed' || status === 'recovery'
@@ -212,8 +216,19 @@ function StateNode({ label, sub, x, y, status, isWarning, isDanger }: { label: s
       )}
       style={{ left: x, top: y }}
     >
-      <div className={clsx("text-[10px] font-bold mb-1", isActive && !isSkipped ? 'text-white' : 'text-neutral-400')}>{label}</div>
+      <div className={clsx("text-[10px] font-bold mb-1", isActive && !isSkipped ? 'text-white' : 'text-neutral-400')}>
+        {label} {executionCount ? `(${executionCount})` : ''}
+      </div>
       <div className="text-[10px] font-mono text-neutral-500">{sub}</div>
+      {activeReqs && activeReqs.length > 0 && (
+        <div className="absolute -top-3 -left-2 flex flex-col gap-1 z-20">
+          {activeReqs.map(req => (
+            <div key={req} className="bg-secondary text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-lg border border-secondary/50">
+              {req}
+            </div>
+          ))}
+        </div>
+      )}
       {status === 'active' && (
         <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-secondary animate-pulse" />
       )}

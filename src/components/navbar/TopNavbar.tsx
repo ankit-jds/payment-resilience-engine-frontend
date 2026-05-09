@@ -1,11 +1,14 @@
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useUIStore } from '@/stores/uiStore'
+import { useRuntimeStore } from '@/features/simulation-engine/runtimeStore'
+import { SimulationRuntimeEngine } from '@/features/simulation-engine/engine'
 import { Settings, Wifi, Monitor, TriangleAlert } from 'lucide-react'
 import { startMockSSE, stopMockSSE } from '@/services/sse/mockSSEService'
 
 export function TopNavbar() {
   const { chaosMode, toggleChaosMode } = useUIStore()
-  const { simulationStatus } = useSimulationStore()
+  const { activeScenarioId } = useSimulationStore()
+  const { simulationStatus } = useRuntimeStore()
 
   const isRunning = simulationStatus === 'Running'
 
@@ -40,8 +43,12 @@ export function TopNavbar() {
           onClick={() => {
             if (isRunning) {
               stopMockSSE()
+              SimulationRuntimeEngine.cleanup()
             } else {
-              startMockSSE()
+              SimulationRuntimeEngine.start(activeScenarioId)
+              startMockSSE(activeScenarioId, (event) => {
+                SimulationRuntimeEngine.processEvent(event)
+              })
             }
           }}
           className={`px-4 py-1.5 text-xs font-semibold rounded transition-colors ${

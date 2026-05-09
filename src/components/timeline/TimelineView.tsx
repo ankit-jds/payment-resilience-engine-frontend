@@ -1,5 +1,6 @@
 import { useEventStore, EventSeverity } from '@/stores/eventStore'
 import { useSimulationStore } from '@/stores/simulationStore'
+import { useRuntimeStore } from '@/features/simulation-engine/runtimeStore'
 import { getScenario } from '@/features/scenarios/scenarioRegistry'
 import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
@@ -17,7 +18,8 @@ const severityColors: Record<EventSeverity, string> = {
 
 export function TimelineView() {
   const { events } = useEventStore()
-  const { activeScenarioId, simulationStatus } = useSimulationStore()
+  const { activeScenarioId } = useSimulationStore()
+  const { simulationStatus } = useRuntimeStore()
   const scenario = getScenario(activeScenarioId)
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
