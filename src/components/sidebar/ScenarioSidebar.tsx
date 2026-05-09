@@ -3,6 +3,7 @@ import { useSimulationStore } from '@/stores/simulationStore'
 import { ChevronDown, ChevronRight, RefreshCw, Play } from 'lucide-react'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { getScenario } from '@/features/scenarios/scenarioRegistry'
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs))
@@ -16,12 +17,19 @@ type ScenarioGroup = {
 
 const groups: ScenarioGroup[] = [
   {
-    id: 'payment_consistency',
-    label: 'Payment Consistency',
+    id: 'request_consistency',
+    label: 'Request Consistency',
     items: [
       { id: 'duplicate_request', label: 'Duplicate Request Prevention' },
+    ],
+  },
+  {
+    id: 'payment_race_conditions',
+    label: 'Payment Race Conditions',
+    items: [
       { id: 'canonical_success', label: 'Canonical Success Winner' },
-      { id: 'double_success', label: 'Double Success Recovery' },
+      { id: 'delayed_webhook', label: 'Delayed Webhook Recovery' },
+      { id: 'concurrent_webhook', label: 'Concurrent Webhook Race' },
     ],
   },
   {
@@ -29,26 +37,38 @@ const groups: ScenarioGroup[] = [
     label: 'Webhook Resilience',
     items: [
       { id: 'duplicate_webhook', label: 'Duplicate Webhook Handling' },
-      { id: 'delayed_webhook', label: 'Delayed Webhook Recovery' },
+      { id: 'lost_webhook', label: 'Lost Webhook Recovery' },
     ],
   },
   {
-    id: 'recovery_systems',
-    label: 'Recovery Systems',
+    id: 'compensation_systems',
+    label: 'Compensation Systems',
     items: [
-      { id: 'reconciliation', label: 'Reconciliation Recovery' },
       { id: 'auto_refund', label: 'Automatic Refund Processing' },
+      { id: 'refund_worker_crash', label: 'Refund Worker Crash Recovery' },
+    ],
+  },
+  {
+    id: 'provider_failures',
+    label: 'Provider Failures',
+    items: [
+      { id: 'provider_timeout', label: 'Provider Timeout Retry' },
     ],
   },
 ]
 
+import { useRuntimeStore } from '@/features/simulation-engine/runtimeStore'
+
 export function ScenarioSidebar() {
-  const { activeScenarioId, setActiveScenario, resetSimulation, simulationStatus } = useSimulationStore()
+  const { activeScenarioId, setActiveScenario, resetSimulation } = useSimulationStore()
+  const { simulationStatus } = useRuntimeStore()
   const isRunning = simulationStatus === 'Running'
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    payment_consistency: true,
+    request_consistency: true,
+    payment_race_conditions: true,
     webhook_resilience: true,
-    recovery_systems: true,
+    compensation_systems: true,
+    provider_failures: true,
   })
 
   const toggleGroup = (id: string) => {
@@ -84,20 +104,30 @@ export function ScenarioSidebar() {
               <div className="mt-1 mb-2">
                 {group.items.map((item) => {
                   const isActive = activeScenarioId === item.id
+                  const scenarioDef = getScenario(item.id)
                   return (
                     <button
                       key={item.id}
                       onClick={() => !isRunning && setActiveScenario(item.id)}
                       disabled={isRunning}
                       className={cn(
-                        "w-full text-left pl-10 pr-4 py-1.5 text-[13px] font-mono transition-colors",
+                        "w-full text-left pl-10 pr-4 py-2 flex flex-col gap-0.5 transition-colors group",
                         isActive 
                           ? "bg-secondary/20 text-secondary border-l-2 border-secondary" 
                           : "text-neutral hover:text-neutral-300 hover:bg-surface/30 border-l-2 border-transparent",
                         isRunning && !isActive && "opacity-50 cursor-not-allowed"
                       )}
+                      title={scenarioDef.description}
                     >
-                      {item.label}
+                      <span className="text-[13px] font-mono leading-tight">{item.label}</span>
+                      {scenarioDef.description && (
+                        <span className={cn(
+                          "text-[10px] leading-tight line-clamp-2",
+                          isActive ? "text-secondary/70" : "text-neutral-500 group-hover:text-neutral-400"
+                        )}>
+                          {scenarioDef.description}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
