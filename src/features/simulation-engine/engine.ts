@@ -20,16 +20,8 @@ export const SimulationRuntimeEngine = {
     const runtimeState = useRuntimeStore.getState()
     
     if (event.type === 'STATE_TRANSITION') {
-      const { nodeId, status, metadata, edgeId } = event
+      const { nodeId, status, edgeId } = event
       
-      // Update metadata and execution context
-      if (metadata) {
-        runtimeState.updateMetadata(metadata)
-        if (metadata.requestId) {
-          runtimeState.setActiveExecutionContext(metadata.requestId)
-        }
-      }
-
       const currentStatus = runtimeState.nodeStates[nodeId] || 'inactive'
       
       // Only process valid transitions
@@ -39,19 +31,12 @@ export const SimulationRuntimeEngine = {
         // Track execution counts and active requests
         if (status === 'active') {
           runtimeState.incrementNodeExecution(nodeId)
-          if (metadata?.requestId) {
-            runtimeState.addActiveRequest(nodeId, metadata.requestId)
-          }
-        } else if (status === 'completed' || status === 'failed' || status === 'skipped') {
-          if (metadata?.requestId) {
-            runtimeState.removeActiveRequest(nodeId, metadata.requestId)
-          }
         }
       }
       
       // Activate edges for animation
       if (edgeId && status === 'active') {
-        runtimeState.activateEdge(edgeId, metadata?.requestId || 'unknown')
+        runtimeState.activateEdge(edgeId, 'unknown')
       }
       
       // Optionally handle serviceUpdates if we want services to be driven by events too

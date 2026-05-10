@@ -7,7 +7,6 @@ interface RuntimeState {
   connectionState: 'LIVE' | 'RECONNECTING' | 'DISCONNECTED'
   nodeStates: Record<string, NodeStatus>
   serviceStates: Record<string, ServiceState>
-  metadata: Record<string, any>
   
   // Execution context for multi-traversal
   activeExecutionContext: string | null
@@ -21,7 +20,6 @@ interface RuntimeState {
   setConnectionState: (state: 'LIVE' | 'RECONNECTING' | 'DISCONNECTED') => void
   updateNodeState: (nodeId: string, status: NodeStatus) => void
   updateServiceState: (serviceId: string, status: ServiceState) => void
-  updateMetadata: (data: Record<string, any>) => void
   
   // Context actions
   setActiveExecutionContext: (requestId: string | null) => void
@@ -39,7 +37,6 @@ export const useRuntimeStore = create<RuntimeState>((set) => ({
   connectionState: 'DISCONNECTED',
   nodeStates: {},
   serviceStates: {},
-  metadata: {},
   activeExecutionContext: null,
   nodeExecutionCounts: {},
   activeRequests: {},
@@ -55,10 +52,6 @@ export const useRuntimeStore = create<RuntimeState>((set) => ({
   
   updateServiceState: (serviceId, status) => set((state) => ({
     serviceStates: { ...state.serviceStates, [serviceId]: status }
-  })),
-
-  updateMetadata: (data) => set((state) => ({
-    metadata: { ...state.metadata, ...data }
   })),
 
   setActiveExecutionContext: (requestId) => set({ activeExecutionContext: requestId }),
@@ -92,7 +85,6 @@ export const useRuntimeStore = create<RuntimeState>((set) => ({
   clearState: () => set({
     nodeStates: {},
     serviceStates: {},
-    metadata: {},
     simulationSessionId: null,
     simulationStatus: 'Idle',
     connectionState: 'DISCONNECTED',
