@@ -1,13 +1,11 @@
 import { useSimulationStore } from '@/stores/simulationStore'
-import { useUIStore } from '@/stores/uiStore'
 import { useRuntimeStore } from '@/features/simulation-engine/runtimeStore'
 import { SimulationRuntimeEngine } from '@/features/simulation-engine/engine'
-import { Settings, Wifi, Monitor, TriangleAlert } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { startMockSSE, stopMockSSE } from '@/services/sse/mockSSEService'
 
 export function TopNavbar() {
-  const { chaosMode, toggleChaosMode } = useUIStore()
-  const { activeScenarioId } = useSimulationStore()
+  const { activeScenarioId, resetSimulation } = useSimulationStore()
   const { simulationStatus } = useRuntimeStore()
 
   const isRunning = simulationStatus === 'Running'
@@ -16,27 +14,22 @@ export function TopNavbar() {
     <header className="h-14 border-b border-surface/50 bg-background/80 backdrop-blur flex items-center justify-between px-6 z-10">
       <div className="flex items-center gap-2">
         <span className="font-mono font-bold text-sm tracking-tight text-neutral-100">
-          Payment Resilience Engine
+          Payment Consistency Engine
         </span>
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3 text-neutral mr-4">
-          <Settings className="w-4 h-4 cursor-pointer hover:text-white transition-colors" />
-          <Wifi className="w-4 h-4 cursor-pointer hover:text-white transition-colors" />
-          <Monitor className="w-4 h-4 cursor-pointer hover:text-white transition-colors" />
-        </div>
-
         <button
-          onClick={toggleChaosMode}
+          onClick={resetSimulation}
+          disabled={isRunning}
           className={`flex items-center gap-2 px-3 py-1.5 text-xs font-mono font-medium rounded border transition-colors ${
-            chaosMode
-              ? 'bg-danger/10 border-danger/50 text-danger'
+            isRunning
+              ? 'border-surface/30 text-neutral/30 cursor-not-allowed'
               : 'border-surface text-neutral hover:bg-surface/50 hover:text-white'
           }`}
         >
-          {chaosMode && <TriangleAlert className="w-3 h-3" />}
-          Chaos Mode
+          <RotateCcw className="w-3.5 h-3.5" />
+          Reset
         </button>
 
         <button

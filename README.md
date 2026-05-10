@@ -1,9 +1,9 @@
-# Payment Resilience Engine — Simulation Frontend
+# Payment Consistency Engine — Simulation Frontend
 
 Payment systems fail in ways that are invisible until money is involved.
 This frontend makes those failures visible.
 
-It is an interactive simulation layer built to visualize how the backend Payment Resilience Engine handles failures and preserves payment correctness.
+It is an interactive simulation layer built to visualize how the backend Payment Consistency Engine handles failures and preserves payment correctness.
 
 **Status: In progress**
 
