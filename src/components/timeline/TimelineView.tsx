@@ -110,7 +110,9 @@ export function TimelineView() {
                   {event.severity}
                 </div>
                 <div className="text-neutral-300">{event.traceId}</div>
-                <div className="text-neutral-200 truncate pr-4">{event.message}</div>
+                <div className="flex flex-col min-w-0 pr-4">
+                  <div className="text-neutral-200 truncate">{event.message}</div>
+                </div>
                 <div className="text-right text-neutral-400">{event.latency ? `${event.latency}ms` : '-'}</div>
               </motion.div>
             ))}
