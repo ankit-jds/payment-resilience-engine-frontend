@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type TabName = 'timeline' | 'state-machine' | 'request-flow' | 'metadata'
+export type TabName = 'timeline' | 'state-machine'
 
 interface ViewportState {
   x: number
@@ -20,7 +20,7 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  activeTab: 'timeline',
+  activeTab: 'state-machine',
   chaosMode: false,
   sidebarCollapsed: false,
   viewports: {},
