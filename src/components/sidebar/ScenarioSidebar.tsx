@@ -78,11 +78,7 @@ export function ScenarioSidebar() {
   return (
     <aside className="w-64 border-r border-surface/50 bg-background/50 flex flex-col h-full overflow-hidden">
       <div className="p-4 border-b border-surface/30">
-        <h2 className="text-[10px] font-bold text-neutral uppercase tracking-widest mb-2">Scenarios</h2>
-        <div className="flex items-center gap-2 text-xs font-mono text-neutral-300">
-          <div className="w-2 h-2 rounded-full bg-secondary"></div>
-          Local Sandbox v2.4
-        </div>
+        <h2 className="text-[10px] font-bold text-neutral uppercase tracking-widest">Scenarios</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-thin py-2">
@@ -117,17 +113,9 @@ export function ScenarioSidebar() {
                           : "text-neutral hover:text-neutral-300 hover:bg-surface/30 border-l-2 border-transparent",
                         isRunning && !isActive && "opacity-50 cursor-not-allowed"
                       )}
-                      title={scenarioDef.description}
+                      title={scenarioDef.name}
                     >
                       <span className="text-[13px] font-mono leading-tight">{item.label}</span>
-                      {scenarioDef.description && (
-                        <span className={cn(
-                          "text-[10px] leading-tight line-clamp-2",
-                          isActive ? "text-secondary/70" : "text-neutral-500 group-hover:text-neutral-400"
-                        )}>
-                          {scenarioDef.description}
-                        </span>
-                      )}
                     </button>
                   )
                 })}
