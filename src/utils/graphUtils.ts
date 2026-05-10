@@ -14,7 +14,7 @@ export function computeEdgePath(
   targetBounds: DOMRectBounds | null, 
   defaultSource: {x: number, y: number}, 
   defaultTarget: {x: number, y: number}
-): { x1: number, y1: number, x2: number, y2: number, path: string } {
+): { x1: number, y1: number, x2: number, y2: number, path: string, labelX: number, labelY: number } {
   
   // Safe fallbacks using default coordinates if bounds are missing (assumes default 140x60 node)
   const src = sourceBounds || { x: defaultSource.x, y: defaultSource.y, width: 140, height: 60 };
@@ -67,19 +67,28 @@ export function computeEdgePath(
   }
 
   let path = '';
+  let cx1, cy1_c, cx2, cy2_c;
   if (isVertical) {
     const distY = Math.abs(y2 - y1);
-    const cy1 = dy > 0 ? y1 + distY / 2 : y1 - distY / 2;
-    const cy2 = dy > 0 ? y2 - distY / 2 : y2 + distY / 2;
-    path = `M ${x1} ${y1} C ${x1} ${cy1}, ${x2} ${cy2}, ${x2} ${y2}`;
+    cy1_c = dy > 0 ? y1 + distY / 2 : y1 - distY / 2;
+    cy2_c = dy > 0 ? y2 - distY / 2 : y2 + distY / 2;
+    cx1 = x1;
+    cx2 = x2;
+    path = `M ${x1} ${y1} C ${cx1} ${cy1_c}, ${cx2} ${cy2_c}, ${x2} ${y2}`;
   } else {
     const distX = Math.abs(x2 - x1);
     // Use dynamic control points for smoother curves, proportional to distance to avoid "knots"
     const curveIntensity = Math.min(distX / 2, 40);
-    const cx1 = dx > 0 ? x1 + curveIntensity : x1 - curveIntensity;
-    const cx2 = dx > 0 ? x2 - curveIntensity : x2 + curveIntensity;
-    path = `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`;
+    cx1 = dx > 0 ? x1 + curveIntensity : x1 - curveIntensity;
+    cx2 = dx > 0 ? x2 - curveIntensity : x2 + curveIntensity;
+    cy1_c = y1;
+    cy2_c = y2;
+    path = `M ${x1} ${y1} C ${cx1} ${cy1_c}, ${cx2} ${cy2_c}, ${x2} ${y2}`;
   }
 
-  return { x1, y1, x2, y2, path };
+  // Calculate midpoint for t=0.5 on cubic bezier: B(0.5) = (P0 + 3P1 + 3P2 + P3) / 8
+  const labelX = (x1 + 3 * cx1 + 3 * cx2 + x2) / 8;
+  const labelY = (y1 + 3 * cy1_c + 3 * cy2_c + y2) / 8;
+
+  return { x1, y1, x2, y2, path, labelX, labelY };
 }

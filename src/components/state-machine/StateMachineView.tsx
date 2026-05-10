@@ -51,26 +51,37 @@ export function StateMachineView() {
 
   return (
     <div className="h-full flex flex-col relative">
-      <div className="mb-4">
-        <h2 className="text-sm font-bold text-white tracking-wide">State Transition Graph</h2>
-        <p className="text-xs font-mono text-neutral mt-1">Scenario: {scenario.name} | Session: {simulationSessionId || 'None'}</p>
+      <div className="mb-4 flex gap-4">
+        <div className="flex-1">
+          <h2 className="text-sm font-bold text-white tracking-wide">State Transition Graph</h2>
+          <p className="text-xs font-mono text-neutral mt-1">
+            Scenario: {scenario.name}
+            {simulationSessionId ? ` | Session: ${simulationSessionId}` : ''}
+          </p>
+        </div>
+        <div className="w-1/2 bg-surface/30 border border-surface/50 rounded p-3 text-[11px] font-mono shadow-sm">
+          <div className="mb-1"><span className="text-neutral-400 font-bold">Problem:</span> <span className="text-neutral-200">{scenario.problem}</span></div>
+          <div className="mb-1"><span className="text-danger/80 font-bold">Risk:</span> <span className="text-neutral-200">{scenario.risk}</span></div>
+          <div><span className="text-green-500/80 font-bold">Protection:</span> <span className="text-neutral-200">{scenario.protection}</span></div>
+        </div>
       </div>
 
       <div className="flex-1 border border-surface/50 rounded-lg bg-background/50 relative overflow-hidden flex items-center justify-center">
         
         <TransformWrapper 
-          minScale={0.8} 
-          maxScale={1.4} 
+          minScale={0.2} 
+          maxScale={2} 
           initialScale={viewport.zoom}
           initialPositionX={viewport.x}
           initialPositionY={viewport.y}
+          limitToBounds={false}
           onTransform={(ref: any) => {
             setViewport('state-machine', { x: ref.state.positionX, y: ref.state.positionY, zoom: ref.state.scale })
           }}
         >
           <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex items-center justify-center">
             {/* Graph Container */}
-            <div className="relative w-[1200px] h-[800px]">
+            <div className="relative w-[4000px] h-[3000px]">
               {/* Edges using SVG */}
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 <defs>
@@ -132,6 +143,20 @@ export function StateMachineView() {
                           markerEnd={marker} 
                         />
                       ))}
+                      {edge.label && (
+                        <g transform={`translate(${computed.labelX}, ${computed.labelY})`}>
+                          <rect x="-30" y="-8" width="60" height="16" fill="#0f1115" rx="3" />
+                          <text
+                            fill="#797676"
+                            fontSize="9"
+                            fontFamily="monospace"
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                          >
+                            {edge.label}
+                          </text>
+                        </g>
+                      )}
                     </g>
                   )
                 })}
@@ -242,7 +267,7 @@ function StateNode({ id, label, sub, x, y, status, isWarning, isDanger, executio
   let opacity = 'opacity-100'
 
   if (isInactive) {
-    opacity = 'opacity-50'
+    opacity = 'opacity-80'
   } else if (isSkipped) {
     borderColor = 'border-surface/40 border-dashed text-neutral-500'
     opacity = 'opacity-60'
