@@ -81,9 +81,9 @@ export function StateMachineView() {
         >
           <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex items-center justify-center">
             {/* Graph Container */}
-            <div className="relative w-[4000px] h-[3000px]">
+            <div className="relative" style={{ width: 4000, height: 3000 }}>
               {/* Edges using SVG */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none">
+              <svg className="absolute inset-0 pointer-events-none" style={{ width: 4000, height: 3000 }}>
                 <defs>
                   <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M 0 0 L 10 5 L 0 10 z" fill="#797676" />
