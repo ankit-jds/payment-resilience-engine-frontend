@@ -9,6 +9,7 @@ export interface SimulationEvent {
   traceId: string
   message: string
   latency?: number
+  metadata?: Record<string, string | number>
 }
 
 interface EventState {

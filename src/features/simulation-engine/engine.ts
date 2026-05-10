@@ -51,7 +51,8 @@ export const SimulationRuntimeEngine = {
         severity: event.severity || 'INFO',
         traceId: event.traceId || runtimeState.activeExecutionContext || 'system',
         message: event.message,
-        latency: event.latency || 0
+        latency: event.latency || 0,
+        metadata: event.metadata
       })
     }
     // Handle old format if accidentally triggered (fallback)

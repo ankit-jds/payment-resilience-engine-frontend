@@ -4,7 +4,6 @@ import { useRuntimeStore } from '@/features/simulation-engine/runtimeStore'
 import { getScenario } from '@/features/scenarios/scenarioRegistry'
 import { motion, AnimatePresence } from 'framer-motion'
 import { clsx } from 'clsx'
-import { Filter } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 const severityColors: Record<EventSeverity, string> = {
@@ -65,15 +64,6 @@ export function TimelineView() {
             Monitoring idempotency keys and race conditions during high-concurrency payment retries.
           </p>
         </div>
-
-        <div className="flex items-center gap-2 relative w-72">
-          <Filter className="w-4 h-4 text-neutral absolute left-3" />
-          <input 
-            type="text" 
-            placeholder="Filter by trc_id, status, or keyword..." 
-            className="w-full bg-background border border-surface rounded-md pl-9 pr-3 py-1.5 text-sm font-mono text-neutral-200 placeholder-neutral/50 focus:outline-none focus:border-secondary transition-colors"
-          />
-        </div>
       </div>
 
       {/* Table container */}
@@ -112,6 +102,15 @@ export function TimelineView() {
                 <div className="text-neutral-300">{event.traceId}</div>
                 <div className="flex flex-col min-w-0 pr-4">
                   <div className="text-neutral-200 truncate">{event.message}</div>
+                  {event.metadata && Object.keys(event.metadata).length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                      {Object.entries(event.metadata).map(([k, v]) => (
+                        <span key={k} className="text-[10px] text-neutral-400 font-medium">
+                          <span className="text-neutral-500">{k}:</span> {v}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="text-right text-neutral-400">{event.latency ? `${event.latency}ms` : '-'}</div>
               </motion.div>
