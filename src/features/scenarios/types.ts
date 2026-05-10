@@ -9,6 +9,7 @@ export interface StateNodeConfig {
   y: number
   isWarning?: boolean
   isDanger?: boolean
+  systemActor?: string
 }
 
 export interface StateEdgeConfig {
@@ -21,25 +22,6 @@ export interface StateEdgeConfig {
   y1?: number
   x2?: number
   y2?: number
-}
-
-export interface RequestNodeConfig {
-  id: string
-  label: string
-  x: number
-  y: number
-  isPrimary?: boolean
-  isBlue?: boolean
-}
-
-export interface RequestEdgeConfig {
-  id: string
-  source: string
-  target: string
-  x1: number
-  y1: number
-  x2: number
-  y2: number
 }
 
 export interface SimulationStep {
@@ -61,7 +43,5 @@ export interface ScenarioDefinition {
   description?: string
   stateNodes: StateNodeConfig[]
   stateEdges: StateEdgeConfig[]
-  requestNodes: RequestNodeConfig[]
-  requestEdges: RequestEdgeConfig[]
   events: any[]
 }
