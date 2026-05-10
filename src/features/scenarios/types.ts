@@ -17,11 +17,13 @@ export interface StateEdgeConfig {
   source: string
   target: string
   type: 'solid' | 'dashed'
+  label?: string
   path?: string
   x1?: number
   y1?: number
   x2?: number
   y2?: number
+  systemActor?: string
 }
 
 export interface SimulationStep {
@@ -31,6 +33,7 @@ export interface SimulationStep {
     traceId: string
     message: string
     latency?: number
+    metadata?: Record<string, string | number>
   }
   stateUpdates?: Record<string, NodeStatus>
   serviceUpdates?: Record<string, ServiceState>
@@ -41,6 +44,9 @@ export interface ScenarioDefinition {
   id: string
   name: string
   description?: string
+  problem?: string
+  risk?: string
+  protection?: string
   stateNodes: StateNodeConfig[]
   stateEdges: StateEdgeConfig[]
   events: any[]
